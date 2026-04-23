@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - displayName: string (required)
+    //   - photoURL: string (optional)
+    //   - createdAt: string (required, immutable)
+    //
+    // Collection: reports
+    // Document ID: {reportId}
+    // Fields:
+    //   - authorId: string (required, immutable)
+    //   - authorName: string (required)
+    //   - authorPhoto: string (optional)
+    //   - idea: string (required)
+    //   - validationScore: map (required)
+    //   - marketDemand: string (optional)
+    //   - competitiveLandscape: string (optional)
+    //   - feasibility: string (optional)
+    //   - revenuePotential: string (optional)
+    //   - innovationAngle: string (optional)
+    //   - swot: map (optional)
+    //   - mvpSuggestions: list (optional)
+    //   - verdict: map (optional)
+    //   - isPublic: boolean (required)
+    //   - createdAt: number (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorId;
+    }
+
+    function isNewDocOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.authorId;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+
+    function authorIdNotModified() {
+      return !('authorId' in request.resource.data) || request.resource.data.authorId == resource.data.authorId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidUser() {
+      return hasRequiredFields(['uid', 'displayName', 'createdAt']) &&
+             request.resource.data.uid is string &&
+             request.resource.data.displayName is string && request.resource.data.displayName.size() < 100 &&
+             request.resource.data.createdAt is string &&
+             (!('photoURL' in request.resource.data) || (request.resource.data.photoURL is string && request.resource.data.photoURL.size() < 1000));
+    }
+
+    function isValidReport() {
+      return hasRequiredFields(['authorId', 'authorName', 'idea', 'validationScore', 'isPublic', 'createdAt']) &&
+             request.resource.data.authorId is string &&
+             request.resource.data.authorName is string && request.resource.data.authorName.size() < 100 &&
+             request.resource.data.idea is string && request.resource.data.idea.size() < 10000 &&
+             request.resource.data.validationScore is map &&
+             request.resource.data.isPublic is bool &&
+             request.resource.data.createdAt is number &&
+             (!('authorPhoto' in request.resource.data) || (request.resource.data.authorPhoto is string && request.resource.data.authorPhoto.size() < 1000)) &&
+             (!('marketDemand' in request.resource.data) || (request.resource.data.marketDemand is string && request.resource.data.marketDemand.size() < 10000)) &&
+             (!('competitiveLandscape' in request.resource.data) || (request.resource.data.competitiveLandscape is string && request.resource.data.competitiveLandscape.size() < 10000)) &&
+             (!('feasibility' in request.resource.data) || (request.resource.data.feasibility is string && request.resource.data.feasibility.size() < 10000)) &&
+             (!('revenuePotential' in request.resource.data) || (request.resource.data.revenuePotential is string && request.resource.data.revenuePotential.size() < 10000)) &&
+             (!('innovationAngle' in request.resource.data) || (request.resource.data.innovationAngle is string && request.resource.data.innovationAngle.size() < 10000)) &&
+             (!('swot' in request.resource.data) || request.resource.data.swot is map) &&
+             (!('mvpSuggestions' in request.resource.data) || request.resource.data.mvpSuggestions is list) &&
+             (!('verdict' in request.resource.data) || request.resource.data.verdict is map);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser() && uidUnchanged();
+      allow update: if isOwner(userId) && isValidUser() && uidNotModified() && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAuthenticated() && (resource.data.isPublic == true || isDocOwner());
+      allow create: if isNewDocOwner() && isValidReport();
+      allow update: if isDocOwner() && isValidReport() && authorIdNotModified() && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isDocOwner();
+    }
+  }
+}

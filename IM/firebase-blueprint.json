@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user profile in the system.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "description": "The user's profile photo URL." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user was created." }
+      },
+      "required": ["uid", "displayName", "createdAt"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "A startup validation report.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "The UID of the user who created the report." },
+        "authorName": { "type": "string", "description": "The display name of the author." },
+        "authorPhoto": { "type": "string", "description": "The profile photo URL of the author." },
+        "idea": { "type": "string", "description": "The startup idea." },
+        "validationScore": { "type": "object", "description": "The validation score object." },
+        "marketDemand": { "type": "string", "description": "Market demand analysis." },
+        "competitiveLandscape": { "type": "string", "description": "Competitive landscape analysis." },
+        "feasibility": { "type": "string", "description": "Feasibility analysis." },
+        "revenuePotential": { "type": "string", "description": "Revenue potential analysis." },
+        "innovationAngle": { "type": "string", "description": "Innovation angle analysis." },
+        "swot": { "type": "object", "description": "SWOT analysis." },
+        "mvpSuggestions": { "type": "array", "description": "MVP suggestions." },
+        "verdict": { "type": "object", "description": "The final verdict." },
+        "isPublic": { "type": "boolean", "description": "Whether the report is visible to others." },
+        "createdAt": { "type": "number", "description": "Timestamp of creation." }
+      },
+      "required": ["authorId", "authorName", "idea", "validationScore", "isPublic", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/reports/{reportId}": {
+      "schema": { "$ref": "#/entities/Report" },
+      "description": "Stores startup validation reports."
+    }
+  }
+}
